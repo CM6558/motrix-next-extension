@@ -7,10 +7,6 @@ on:
         description: 'Production release tag/version to compare, or latest'
         type: string
         default: latest
-      edgeOperationId:
-        description: 'Optional Edge publish operation id for a known pending submission'
-        type: string
-        required: false
 
 permissions:
   contents: read
@@ -80,7 +76,7 @@ jobs:
           EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
           EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
-          EDGE_OPERATION_ID: ${{ inputs.edgeOperationId }}
+          EDGE_OPERATION_ID: ''
         run: |
           node <<'NODE'
           const crypto = require('node:crypto');
