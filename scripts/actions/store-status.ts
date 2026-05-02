@@ -441,7 +441,7 @@ function mapEdgeState(status: string): string {
     case 'InProgress':
       return 'In progress';
     case 'Succeeded':
-      return 'Submitted or completed';
+      return 'Submitted, not live yet';
     case 'Failed':
       return 'Failed';
     default:
