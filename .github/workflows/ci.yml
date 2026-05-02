@@ -18,35 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
+      - uses: ./.github/actions/setup-node-pnpm
+
+      - uses: ./.github/actions/quality-gate
         with:
-          version: 10
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: TypeScript compile check
-        run: pnpm compile
-
-      - name: Run tests
-        run: pnpm test
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: i18n lint
-        run: npx tsx scripts/lint-i18n.ts
-
-      - name: Format check
-        run: pnpm format:check
-
-      - name: Build extension (Chromium)
-        run: pnpm build
-
-      - name: Build extension (Firefox)
-        run: pnpm build:firefox
+          build_chromium: 'true'
+          build_firefox: 'true'

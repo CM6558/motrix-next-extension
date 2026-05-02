@@ -305,7 +305,24 @@ All code changes must be finalized before starting. Execute in strict order:
 | ---------------- | ------------------------------- | ----------------------------------------------------------------------------------------- |
 | Chrome Web Store | `chrome-webstore-upload-cli`    | `CHROME_EXTENSION_ID`, `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN` |
 | Firefox AMO      | `web-ext sign --channel listed` | `FIREFOX_API_KEY`, `FIREFOX_API_SECRET`                                                   |
-| Edge Add-ons     | REST API v1 (curl)              | `EDGE_PRODUCT_ID`, `EDGE_CLIENT_ID`, `EDGE_API_KEY`                                       |
+| Edge Add-ons     | REST API v1                     | `EDGE_PRODUCT_ID`, `EDGE_CLIENT_ID`, `EDGE_API_KEY`                                       |
+
+Store workflows also use repository variables for non-secret identifiers and
+cross-workflow status:
+
+| Variable                           | Purpose                                     |
+| ---------------------------------- | ------------------------------------------- |
+| `CHROME_PUBLISHER_ID`              | Chrome Web Store publisher resource ID      |
+| `FIREFOX_ADDON_SLUG`               | Firefox AMO add-on slug                     |
+| `EDGE_EXTENSION_ID`                | Public Edge extension ID for live checks    |
+| `EDGE_LAST_OPERATION_ID`           | Last Edge publish review operation ID       |
+| `EDGE_LAST_OPERATION_VERSION`      | Version tied to the last Edge operation     |
+| `EDGE_LAST_OPERATION_RUN_ID`       | GitHub Actions run that saved the operation |
+| `EDGE_LAST_OPERATION_SUBMITTED_AT` | Timestamp when the Edge operation was saved |
+
+`REPO_VARIABLES_TOKEN` is optional. Add it only if `GITHUB_TOKEN` cannot update
+repository variables during Edge publishing. It must have repository Variables
+read/write permission and no Secrets permission.
 
 **Firefox source code:** The publish pipeline automatically packages the repository via
 `git archive` and uploads it alongside the extension using `--upload-source-code`.
@@ -355,7 +372,7 @@ Patch releases: keep concise.
 
 ### `ci.yml` (Push to Main + Pull Requests)
 
-Single job `quality-gate`:
+Single job `quality-gate`, using shared local actions:
 
 | Step       | Command                        |
 | ---------- | ------------------------------ |
@@ -368,17 +385,30 @@ Single job `quality-gate`:
 
 ### `release.yml` (Release Published + Manual Dispatch)
 
-1. **quality-gate job** — same 6 checks as CI
+1. **quality-gate job** — shared local quality gate
 2. **package job** — `pnpm zip` / `pnpm zip:firefox` → upload `.zip` to GitHub Release (on publish) or Actions artifact (on dispatch)
 
 ### `publish.yml` (Manual Dispatch Only)
 
-1. **resolve-version job** — resolves input (`latest` or explicit version) to a Git tag
-2. **quality-gate job** — full CI suite against the exact tag commit
-3. **publish-chrome job** — build from source → upload and auto-publish to Chrome Web Store
-4. **publish-firefox job** — build from source → package source code → sign and submit to AMO
-5. **publish-edge job** — build from source → upload via REST API → submit for review
-6. **publish-summary job** — aggregates results into a markdown table in Actions Summary
+1. **resolve-version job** — `scripts/actions/resolve-release.ts`, production releases only
+2. **quality-gate job** — shared local quality gate against the exact tag commit
+3. **publish-chrome job** — `scripts/actions/publish-chrome.ts`
+4. **publish-firefox job** — `scripts/actions/publish-firefox.ts`
+5. **publish-edge job** — `scripts/actions/publish-edge.ts`, saves Edge operation variables after submission
+6. **publish-summary job** — `scripts/actions/publish-summary.ts`
+
+### `store-status.yml` (Manual Dispatch Only)
+
+Runs `scripts/actions/store-status.ts` and writes a direct markdown report to the
+Actions summary. `latest` resolves to the newest production GitHub Release only;
+beta/prerelease tags are rejected.
+
+### Shared Actions
+
+| Action                            | Responsibility                        |
+| --------------------------------- | ------------------------------------- |
+| `.github/actions/setup-node-pnpm` | Node 22, pnpm 10, dependency install  |
+| `.github/actions/quality-gate`    | Compile, test, lint, i18n, formatting |
 
 ---
 

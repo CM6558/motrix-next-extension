@@ -1,0 +1,71 @@
+name: Quality Gate
+description: Run the repository quality gate with optional build and package checks.
+
+inputs:
+  working-directory:
+    description: Directory that contains the project to verify.
+    default: .
+  build_chromium:
+    description: Run the Chromium production build.
+    default: 'false'
+  build_firefox:
+    description: Run the Firefox production build.
+    default: 'false'
+  package_chromium:
+    description: Run the Chromium zip package command.
+    default: 'false'
+  package_firefox:
+    description: Run the Firefox zip package command.
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: TypeScript compile check
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: pnpm compile
+
+    - name: Run tests
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: pnpm test
+
+    - name: Lint
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: pnpm lint
+
+    - name: i18n lint
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: pnpm lint:i18n
+
+    - name: Format check
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: pnpm format:check
+
+    - name: Build extension (Chromium)
+      if: ${{ inputs.build_chromium == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: pnpm build
+
+    - name: Build extension (Firefox)
+      if: ${{ inputs.build_firefox == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: pnpm build:firefox
+
+    - name: Package extension (Chromium)
+      if: ${{ inputs.package_chromium == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: pnpm zip
+
+    - name: Package extension (Firefox)
+      if: ${{ inputs.package_firefox == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: pnpm zip:firefox
