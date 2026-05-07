@@ -165,6 +165,84 @@ describe('DownloadOrchestrator', () => {
       expect(routedCall).toBeDefined();
       expect((routedCall![0] as { context: { hasCookie: boolean } }).context.hasCookie).toBe(false);
     });
+
+    it('cancels the browser download before resolving delayed filename metadata', async () => {
+      const calls: string[] = [];
+      const earlyCancelDeps = createMockDeps();
+      earlyCancelDeps.downloads.cancel = vi
+        .fn<(id: number) => Promise<void>>()
+        .mockImplementation(async () => {
+          calls.push('cancel');
+        });
+      const filenameMetadata = {
+        resolve: vi.fn().mockImplementation(async () => {
+          calls.push('metadata');
+          return {
+            filename: 'file.zip',
+            source: 'determining-filename' as const,
+          };
+        }),
+      };
+      earlyCancelDeps.filenameMetadata = filenameMetadata;
+      const orch = new DownloadOrchestrator(earlyCancelDeps);
+
+      await orch.handleCreated(createMockDownloadItem());
+
+      expect(filenameMetadata.resolve).toHaveBeenCalled();
+      expect(calls).toEqual(['cancel', 'metadata']);
+    });
+
+    it('cancels the browser download before collecting cookies', async () => {
+      const calls: string[] = [];
+      const earlyCancelDeps = createMockDeps({
+        getSettings: vi.fn().mockReturnValue({
+          ...DEFAULT_DOWNLOAD_SETTINGS,
+          forwardCookies: true,
+        } satisfies DownloadSettings),
+      });
+      earlyCancelDeps.downloads.cancel = vi
+        .fn<(id: number) => Promise<void>>()
+        .mockImplementation(async () => {
+          calls.push('cancel');
+        });
+      const cookies = {
+        getAll: vi.fn().mockImplementation(async () => {
+          calls.push('cookies');
+          return [{ name: 'token', value: 'abc123' }];
+        }),
+      };
+      earlyCancelDeps.cookies = cookies;
+      const orch = new DownloadOrchestrator(earlyCancelDeps);
+
+      await orch.handleCreated(createMockDownloadItem());
+
+      expect(cookies.getAll).toHaveBeenCalled();
+      expect(calls).toEqual(['cancel', 'cookies']);
+    });
+
+    it('cancels the browser download before routing to the desktop app', async () => {
+      const calls: string[] = [];
+      const earlyCancelDeps = createMockDeps({
+        openProtocolNewTask: undefined,
+      });
+      earlyCancelDeps.downloads.cancel = vi
+        .fn<(id: number) => Promise<void>>()
+        .mockImplementation(async () => {
+          calls.push('cancel');
+        });
+      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const addDownload = vi.spyOn(desktopClient, 'addDownload').mockImplementation(async () => {
+        calls.push('route');
+        return { action: 'queued' };
+      });
+      earlyCancelDeps.desktopClient = desktopClient;
+      const orch = new DownloadOrchestrator(earlyCancelDeps);
+
+      await orch.handleCreated(createMockDownloadItem());
+
+      expect(addDownload).toHaveBeenCalled();
+      expect(calls).toEqual(['cancel', 'route']);
+    });
   });
 
   // ─── handleCreated — state guard (#267) ─────────────────

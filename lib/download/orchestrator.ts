@@ -157,7 +157,7 @@ function resolveBestFilenameHint(
  * 2. Deep-link fallback (`openProtocolNewTask()`) — when HTTP API unreachable
  *
  * The extension is a thin interceptor + router layer:
- *   filter → collect cookies → cancel browser download → send to desktop
+ *   filter → cancel browser download → collect metadata → send to desktop
  */
 export class DownloadOrchestrator {
   private readonly deps: OrchestratorDeps;
@@ -244,16 +244,19 @@ export class DownloadOrchestrator {
       },
     });
 
-    // ─── Route to desktop app ───────────────────
+    // Stop the native browser download as soon as the filter has committed to
+    // interception. Metadata collection and desktop routing can be slower on
+    // some browsers, especially when cookie forwarding is enabled.
     const effectiveUrl = item.finalUrl || item.url;
+    await this.safeCancel(item.id);
+
+    // ─── Route to desktop app ───────────────────
     const metadata = await this.resolveFilenameMetadata(item);
     const resolvedFilename = resolveBestFilenameHint(effectiveUrl, metadata, item.filename);
     const filenameHint = resolvedFilename.filename;
     const filenameSource = resolvedFilename.source;
     const displayName = filenameHint || extractFilenameFromUrl(effectiveUrl) || UNRESOLVED_FILENAME;
     const cookie = await this.collectCookies(effectiveUrl);
-
-    await this.safeCancel(item.id);
 
     const routed = await this.sendToDesktop(
       effectiveUrl,

@@ -1,6 +1,7 @@
 import { browser, type Browser } from 'wxt/browser';
 import { storage as wxtStorage } from '#imports';
 import { DownloadOrchestrator } from '@/lib/download';
+import { DownloadFilenameGate, type SuggestedFilename } from '@/lib/download/filename-gate';
 import { DownloadFilenameMetadataStore } from '@/lib/download/filename-metadata';
 import { DesktopApiClient } from '@/lib/api';
 import {
@@ -42,6 +43,7 @@ export default defineBackground(() => {
       });
   const diagnosticLog = new DiagnosticLog();
   const filenameMetadata = new DownloadFilenameMetadataStore();
+  const filenameGate = new DownloadFilenameGate();
 
   const storageService = new StorageService(createWxtStorageApi(wxtStorage));
   const permissionService = new PermissionService({
@@ -179,7 +181,13 @@ export default defineBackground(() => {
   // ─── Orchestrator ───────────────────────────────────
   const orchestrator = new DownloadOrchestrator({
     downloads: {
-      cancel: (id) => browser.downloads.cancel(id),
+      cancel: async (id) => {
+        try {
+          await browser.downloads.cancel(id);
+        } finally {
+          filenameGate.release(id);
+        }
+      },
       erase: (query) => browser.downloads.erase(query).then(() => {}),
     },
     cookies: {
@@ -267,7 +275,6 @@ export default defineBackground(() => {
     },
   });
 
-  type SuggestedFilename = (suggestion?: { filename: string; conflictAction?: string }) => void;
   type DeterminingFilenameItem = {
     id: number;
     url: string;
@@ -277,7 +284,7 @@ export default defineBackground(() => {
   type DownloadsWithDeterminingFilename = typeof browser.downloads & {
     onDeterminingFilename?: {
       addListener: (
-        callback: (item: DeterminingFilenameItem, suggest: SuggestedFilename) => void,
+        callback: (item: DeterminingFilenameItem, suggest: SuggestedFilename) => true | void,
       ) => void;
     };
   };
@@ -296,11 +303,8 @@ export default defineBackground(() => {
   function registerFilenameMetadataListeners(): void {
     const downloads = browser.downloads as DownloadsWithDeterminingFilename;
     downloads.onDeterminingFilename?.addListener((item, suggest) => {
-      try {
-        filenameMetadata.rememberDeterminedFilename(item);
-      } finally {
-        suggest();
-      }
+      filenameMetadata.rememberDeterminedFilename(item);
+      return filenameGate.hold(item.id, suggest);
     });
 
     const browserWithWebRequest = browser as typeof browser & { webRequest?: WebRequestApi };
@@ -341,8 +345,9 @@ export default defineBackground(() => {
   // It fires reliably for every download regardless of how it was initiated.
 
   browser.downloads.onCreated.addListener((item) => {
-    void ensureConfigLoaded().then(async () => {
+    void (async () => {
       try {
+        await ensureConfigLoaded();
         await orchestrator.handleCreated({
           id: item.id,
           url: item.url,
@@ -367,8 +372,10 @@ export default defineBackground(() => {
             filename: item.filename ?? '',
           },
         );
+      } finally {
+        filenameGate.release(item.id);
       }
-    });
+    })();
   });
 
   // Context menu — registration deferred (see loadConfig().then() below)
