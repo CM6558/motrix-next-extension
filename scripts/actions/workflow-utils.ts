@@ -35,9 +35,14 @@ export function runText(command: string, args: string[]): string {
   return execFileSync(command, args, { encoding: 'utf8' }).trim();
 }
 
-export function runCommand(command: string, args: string[]): { exitCode: number; output: string } {
+export function runCommand(
+  command: string,
+  args: string[],
+  options: { env?: NodeJS.ProcessEnv } = {},
+): { exitCode: number; output: string } {
   const result = spawnSync(command, args, {
     encoding: 'utf8',
+    env: options.env ? { ...process.env, ...options.env } : process.env,
     shell: false,
   });
   return {
