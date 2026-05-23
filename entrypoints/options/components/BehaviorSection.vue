@@ -127,7 +127,9 @@ const unknownSizeOptions = computed(() => [
             :step="1"
             style="width: 132px"
             @update:value="(v: number | null) => emit('update:minimumFileSize', { sizeMb: v ?? 0 })"
-          />
+          >
+            <template #suffix>MB</template>
+          </NInputNumber>
         </NFormItem>
 
         <NFormItem
