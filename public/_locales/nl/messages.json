@@ -441,11 +441,11 @@
     "description": "Label for the unknown file size behavior selector."
   },
   "options_min_size_unknown_intercept": {
-    "message": "Naar Motrix Next sturen",
+    "message": "Overdragen aan Motrix Next",
     "description": "Option label for routing unknown-size downloads to Motrix Next."
   },
   "options_min_size_unknown_skip": {
-    "message": "Browserdownloader gebruiken",
+    "message": "Overdragen aan browser",
     "description": "Option label for leaving unknown-size downloads in the browser."
   },
   "options_duplicate_guard_label": {

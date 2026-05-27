@@ -441,11 +441,11 @@
     "description": "Label for the unknown file size behavior selector."
   },
   "options_min_size_unknown_intercept": {
-    "message": "Motrix Next로 보내기",
+    "message": "Motrix Next로 넘기기",
     "description": "Option label for routing unknown-size downloads to Motrix Next."
   },
   "options_min_size_unknown_skip": {
-    "message": "브라우저 다운로더 사용",
+    "message": "브라우저로 넘기기",
     "description": "Option label for leaving unknown-size downloads in the browser."
   },
   "options_duplicate_guard_label": {
