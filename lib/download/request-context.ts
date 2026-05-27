@@ -15,6 +15,17 @@ export interface RequestHeaderContext {
   requestHeaders: RequestHeader[];
 }
 
+export type RequestHeaderMatchSource = 'finalUrl' | 'url';
+export type RequestHeaderMatchReason = 'matched' | 'not-found' | 'expired';
+
+export interface RequestHeaderMatchResult {
+  matched: boolean;
+  reason: RequestHeaderMatchReason;
+  context?: RequestHeaderContext;
+  source?: RequestHeaderMatchSource;
+  ageMs?: number;
+}
+
 export interface CaptureRequestHeaderContextInput {
   url: string;
   requestHeaders?: RawRequestHeader[];
@@ -153,23 +164,39 @@ export class RequestHeaderContextStore {
     this.evictOverflow();
   }
 
-  match(input: { url: string; finalUrl?: string }): RequestHeaderContext | undefined {
-    this.prune();
-    const urls = [input.finalUrl, input.url].filter((url): url is string => Boolean(url));
+  match(input: { url: string; finalUrl?: string }): RequestHeaderMatchResult {
+    const now = this.now();
+    const candidates: Array<{ url: string; source: RequestHeaderMatchSource }> = [];
+    if (input.finalUrl) candidates.push({ url: input.finalUrl, source: 'finalUrl' });
+    candidates.push({ url: input.url, source: 'url' });
     const seen = new Set<string>();
+    let sawExpiredCandidate = false;
 
-    for (const url of urls) {
+    for (const { url, source } of candidates) {
       const key = canonicalUrl(url);
       if (seen.has(key)) continue;
       seen.add(key);
 
       const context = this.byUrl.get(key);
       if (!context) continue;
+      if (context.createdAt < now - this.ttlMs) {
+        this.byUrl.delete(key);
+        sawExpiredCandidate = true;
+        continue;
+      }
+
       this.consume(context);
-      return cloneContext(context);
+      return {
+        matched: true,
+        reason: 'matched',
+        context: cloneContext(context),
+        source,
+        ageMs: Math.max(0, now - context.createdAt),
+      };
     }
 
-    return undefined;
+    this.prune(now);
+    return { matched: false, reason: sawExpiredCandidate ? 'expired' : 'not-found' };
   }
 
   private consume(context: RequestHeaderContext): void {
@@ -180,8 +207,8 @@ export class RequestHeaderContextStore {
     }
   }
 
-  private prune(): void {
-    const cutoff = this.now() - this.ttlMs;
+  private prune(now: number = this.now()): void {
+    const cutoff = now - this.ttlMs;
     for (const [url, context] of this.byUrl) {
       if (context.createdAt < cutoff) {
         this.byUrl.delete(url);

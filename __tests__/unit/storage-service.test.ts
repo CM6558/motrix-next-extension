@@ -30,7 +30,7 @@ describe('StorageService.load', () => {
 
     const { storage: result, migration } = await service.load();
 
-    expect(result.connection).toEqual({ port: 16801, secret: '' });
+    expect(result.connection).toEqual({ port: 24110, secret: '' });
     expect(result.settings.enabled).toBe(true);
     expect(result.siteRules).toEqual([]);
     expect(result.uiPrefs.theme).toBe('system');
@@ -71,7 +71,7 @@ describe('StorageService.load', () => {
     const { storage: result } = await service.load();
 
     // Should return defaults, not throw
-    expect(result.connection.port).toBe(16801);
+    expect(result.connection.port).toBe(24110);
     expect(result.settings.enabled).toBe(true);
   });
 });
@@ -97,7 +97,7 @@ describe('StorageService.updateConnectionConfig', () => {
   it('patches connection config while preserving existing fields', async () => {
     const api = createMockApi({
       _version: 2,
-      connection: { port: 16801, secret: 'token' },
+      connection: { port: 24110, secret: 'token' },
     });
     const service = new StorageService(api);
 

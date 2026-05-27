@@ -19,27 +19,27 @@ describe('parseConnectionConfig', () => {
 
   it('fills missing fields with defaults', () => {
     const result = parseConnectionConfig({});
-    expect(result).toEqual({ port: 16801, secret: '' });
+    expect(result).toEqual({ port: 24110, secret: '' });
   });
 
   it('fills undefined input with defaults', () => {
     const result = parseConnectionConfig(undefined);
-    expect(result).toEqual({ port: 16801, secret: '' });
+    expect(result).toEqual({ port: 24110, secret: '' });
   });
 
   it('replaces invalid port type with default', () => {
     const result = parseConnectionConfig({ port: 'not-a-number' });
-    expect(result.port).toBe(16801);
+    expect(result.port).toBe(24110);
   });
 
   it('clamps port below minimum to default', () => {
     const result = parseConnectionConfig({ port: -1 });
-    expect(result.port).toBe(16801);
+    expect(result.port).toBe(24110);
   });
 
   it('clamps port above maximum to default', () => {
     const result = parseConnectionConfig({ port: 99999 });
-    expect(result.port).toBe(16801);
+    expect(result.port).toBe(24110);
   });
 
   it('replaces invalid secret type with default', () => {
@@ -49,7 +49,7 @@ describe('parseConnectionConfig', () => {
 
   it('strips extra fields', () => {
     const result = parseConnectionConfig({
-      port: 16801,
+      port: 24110,
       secret: '',
       extra: true,
     });
@@ -346,6 +346,9 @@ describe('parseDiagnosticEvents', () => {
     'download_routed',
     'download_cancel_failed',
     'download_handler_error',
+    'request_headers_listener_ready',
+    'request_headers_listener_downgraded',
+    'request_headers_listener_failed',
     // Wake lifecycle
     'download_wake_attempt',
     'wake_success',
@@ -387,7 +390,7 @@ describe('parseDiagnosticEvents', () => {
 describe('parseStorage', () => {
   it('returns fully defaulted storage for empty object', () => {
     const result = parseStorage({});
-    expect(result.connection).toEqual({ port: 16801, secret: '' });
+    expect(result.connection).toEqual({ port: 24110, secret: '' });
     expect(result.settings).toEqual({
       enabled: true,
       hideDownloadBar: false,
@@ -413,7 +416,7 @@ describe('parseStorage', () => {
 
   it('returns fully defaulted storage for null input', () => {
     const result = parseStorage(null);
-    expect(result.connection.port).toBe(16801);
+    expect(result.connection.port).toBe(24110);
     expect(result.settings.enabled).toBe(true);
   });
 
@@ -496,7 +499,7 @@ describe('parseStorage', () => {
       diagnosticLog: false,
     });
     // All fields should be defaults — not throw
-    expect(result.connection).toEqual({ port: 16801, secret: '' });
+    expect(result.connection).toEqual({ port: 24110, secret: '' });
     expect(result.settings.enabled).toBe(true);
     expect(result.siteRules).toEqual([]);
     expect(result.uiPrefs.theme).toBe('system');

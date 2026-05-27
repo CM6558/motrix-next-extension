@@ -11,7 +11,7 @@ import {
 import type { DesktopApiClient } from '@/lib/api/desktop-client';
 import { ApiAuthError } from '@/shared/errors';
 import { isCookieCollectableUrl } from '@/lib/services/magnet-interception';
-import type { RequestHeaderContext } from './request-context';
+import type { RequestHeaderContext, RequestHeaderMatchReason } from './request-context';
 
 // ─── Dependency Interface ───────────────────────────────
 
@@ -76,10 +76,20 @@ export interface DownloadItem {
   state: string;
   referrer?: string;
   requestHeaderContext?: RequestHeaderContext;
+  requestHeaderDiagnostics?: RequestHeaderDiagnostics;
 }
 
 const GENERIC_FILENAME_HINTS = new Set(['download', UNRESOLVED_FILENAME]);
 type FilenameHintSource = FilenameSource | 'download-item' | 'url';
+type HeaderMatchSource = 'finalUrl' | 'url';
+
+export interface RequestHeaderDiagnostics {
+  enabled: boolean;
+  matched: boolean;
+  reason: RequestHeaderMatchReason | 'disabled';
+  source?: HeaderMatchSource;
+  ageMs?: number;
+}
 
 function extensionOf(filename: string): string {
   const dot = filename.lastIndexOf('.');
@@ -275,6 +285,7 @@ export class DownloadOrchestrator {
       filenameHint,
       filenameSource,
       item.requestHeaderContext,
+      item.requestHeaderDiagnostics,
     );
     if (!routed) {
       // Both paths failed — can't route to desktop
@@ -338,8 +349,12 @@ export class DownloadOrchestrator {
     filenameHint?: string,
     filenameSource: string = 'none',
     requestHeaderContext?: RequestHeaderContext,
+    requestHeaderDiagnostics?: RequestHeaderDiagnostics,
   ): Promise<boolean> {
-    const headerLogContext = this.buildHeaderLogContext(requestHeaderContext);
+    const headerLogContext = this.buildHeaderLogContext(
+      requestHeaderContext,
+      requestHeaderDiagnostics,
+    );
 
     // Primary: HTTP API
     if (this.deps.desktopClient) {
@@ -387,7 +402,7 @@ export class DownloadOrchestrator {
           level: 'warn',
           code: 'download_fallback',
           message: `HTTP API failed, attempting wake: ${e instanceof Error ? e.message : String(e)}`,
-          context: { url },
+          context: { url, ...headerLogContext },
         });
 
         // Wake → retry: try to start the desktop app and retry via HTTP
@@ -397,7 +412,7 @@ export class DownloadOrchestrator {
             level: 'info',
             code: 'download_wake_attempt',
             message: `Waking desktop app for: ${displayName}`,
-            context: { url },
+            context: { url, ...headerLogContext },
           });
 
           try {
@@ -407,7 +422,7 @@ export class DownloadOrchestrator {
                 level: 'info',
                 code: 'wake_success',
                 message: `Desktop app woke successfully for: ${displayName}`,
-                context: { url },
+                context: { url, ...headerLogContext },
               });
 
               const retryResponse = await this.deps.desktopClient.addDownload({
@@ -447,7 +462,7 @@ export class DownloadOrchestrator {
               level: 'warn',
               code: 'wake_timeout',
               message: `Wake timed out for: ${displayName}`,
-              context: { url },
+              context: { url, ...headerLogContext },
             });
           } catch (wakeError) {
             if (wakeError instanceof ApiAuthError) {
@@ -465,7 +480,7 @@ export class DownloadOrchestrator {
               level: 'warn',
               code: 'download_fallback',
               message: `Wake+retry failed, falling back to deep-link: ${wakeError instanceof Error ? wakeError.message : String(wakeError)}`,
-              context: { url },
+              context: { url, ...headerLogContext },
             });
           }
         } else if (!settings.autoLaunchApp) {
@@ -474,7 +489,7 @@ export class DownloadOrchestrator {
             level: 'info',
             code: 'download_fallback',
             message: `autoLaunchApp disabled, skipping wake for: ${displayName}`,
-            context: { url },
+            context: { url, ...headerLogContext },
           });
         }
       }
@@ -499,9 +514,7 @@ export class DownloadOrchestrator {
           filename: displayName,
           filenameSource,
           hasCookie: false,
-          hasUserAgent: false,
-          headerCount: 0,
-          matchedHeaderContext: false,
+          ...this.buildDeepLinkHeaderLogContext(requestHeaderDiagnostics),
         },
       });
       return true;
@@ -510,15 +523,44 @@ export class DownloadOrchestrator {
     return false;
   }
 
-  private buildHeaderLogContext(context: RequestHeaderContext | undefined): {
+  private buildHeaderLogContext(
+    context: RequestHeaderContext | undefined,
+    diagnostics: RequestHeaderDiagnostics | undefined,
+  ): {
+    requestHeadersEnabled: boolean;
     hasUserAgent: boolean;
     headerCount: number;
     matchedHeaderContext: boolean;
+    headerMatchReason: string;
+    headerMatchSource?: string;
+    headerAgeMs?: number;
   } {
     return {
+      requestHeadersEnabled: diagnostics?.enabled ?? false,
       hasUserAgent: Boolean(context?.userAgent),
       headerCount: context?.requestHeaders.length ?? 0,
-      matchedHeaderContext: Boolean(context),
+      matchedHeaderContext: diagnostics?.matched ?? Boolean(context),
+      headerMatchReason: diagnostics?.reason ?? (context ? 'matched' : 'not-found'),
+      ...(diagnostics?.source ? { headerMatchSource: diagnostics.source } : {}),
+      ...(diagnostics?.ageMs !== undefined ? { headerAgeMs: diagnostics.ageMs } : {}),
+    };
+  }
+
+  private buildDeepLinkHeaderLogContext(diagnostics: RequestHeaderDiagnostics | undefined): {
+    requestHeadersEnabled: boolean;
+    hasUserAgent: boolean;
+    headerCount: number;
+    matchedHeaderContext: boolean;
+    headerMatchReason: string;
+    headerMatchSource?: string;
+    headerAgeMs?: number;
+    headerForwardingSkippedReason: string;
+  } {
+    return {
+      ...this.buildHeaderLogContext(undefined, diagnostics),
+      hasUserAgent: false,
+      headerCount: 0,
+      headerForwardingSkippedReason: 'deep-link',
     };
   }
 

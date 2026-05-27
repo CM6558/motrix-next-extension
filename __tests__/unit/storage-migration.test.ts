@@ -21,7 +21,7 @@ describe('STORAGE_VERSION', () => {
 
 describe('migrateStorage', () => {
   it('stamps _version on data with no version field', async () => {
-    const api = createMockStorage({ connection: { port: 16801 } });
+    const api = createMockStorage({ connection: { port: 24110 } });
 
     const result = await migrateStorage(api);
 

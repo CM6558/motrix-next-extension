@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DownloadOrchestrator } from '@/lib/download/orchestrator';
-import type { OrchestratorDeps } from '@/lib/download/orchestrator';
+import type { DownloadItem, OrchestratorDeps } from '@/lib/download/orchestrator';
 import type { DownloadSettings, SiteRule } from '@/shared/types';
 import { DEFAULT_DOWNLOAD_SETTINGS } from '@/shared/constants';
 import { DesktopApiClient } from '@/lib/api/desktop-client';
 import { ApiAuthError } from '@/shared/errors';
-import type { RequestHeaderContext } from '@/lib/download/request-context';
+import type {
+  RequestHeaderContext,
+  RequestHeaderMatchReason,
+} from '@/lib/download/request-context';
 
 // ─── Mock Types ─────────────────────────────────────────
 
@@ -20,9 +23,16 @@ interface MockDownloadItem {
   byExtensionId?: string;
   state: string;
   requestHeaderContext?: RequestHeaderContext;
+  requestHeaderDiagnostics?: {
+    enabled: boolean;
+    matched: boolean;
+    reason: RequestHeaderMatchReason | 'disabled';
+    source?: 'finalUrl' | 'url';
+    ageMs?: number;
+  };
 }
 
-function createMockDownloadItem(overrides?: Partial<MockDownloadItem>): MockDownloadItem {
+function createMockDownloadItem(overrides?: Partial<MockDownloadItem>): DownloadItem {
   return {
     id: 1,
     url: 'https://example.com/file.zip',
@@ -234,7 +244,7 @@ describe('DownloadOrchestrator', () => {
         .mockImplementation(async () => {
           calls.push('cancel');
         });
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
       const addDownload = vi.spyOn(desktopClient, 'addDownload').mockImplementation(async () => {
         calls.push('route');
         return { action: 'queued' };
@@ -406,7 +416,7 @@ describe('DownloadOrchestrator', () => {
 
   describe('handleCreated — cookie forwarding', () => {
     it('forwards cookies only to the HTTP API path', async () => {
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
       const addDownload = vi
         .spyOn(desktopClient, 'addDownload')
         .mockResolvedValue({ action: 'queued' });
@@ -438,7 +448,7 @@ describe('DownloadOrchestrator', () => {
     });
 
     it('forwards captured request headers and User-Agent only through the HTTP API path', async () => {
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
       const addDownload = vi
         .spyOn(desktopClient, 'addDownload')
         .mockResolvedValue({ action: 'queued' });
@@ -469,7 +479,7 @@ describe('DownloadOrchestrator', () => {
     });
 
     it('reuses captured request headers when retrying after wake', async () => {
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
       const addDownload = vi
         .spyOn(desktopClient, 'addDownload')
         .mockRejectedValueOnce(new Error('offline'))
@@ -533,7 +543,7 @@ describe('DownloadOrchestrator', () => {
     });
 
     it('logs only header context counts and booleans after HTTP routing', async () => {
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
       vi.spyOn(desktopClient, 'addDownload').mockResolvedValue({ action: 'queued' });
       const apiDeps = createMockDeps({ desktopClient, openProtocolNewTask: undefined });
       const orch = new DownloadOrchestrator(apiDeps);
@@ -560,6 +570,81 @@ describe('DownloadOrchestrator', () => {
           hasUserAgent: true,
           headerCount: 1,
           matchedHeaderContext: true,
+        }),
+      );
+      expect(JSON.stringify(routedCall![0])).not.toContain('SensitiveBrowser');
+      expect(JSON.stringify(routedCall![0])).not.toContain('private.example.com');
+    });
+
+    it('logs request-header match reason when no cached context is available', async () => {
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
+      vi.spyOn(desktopClient, 'addDownload').mockResolvedValue({ action: 'queued' });
+      const apiDeps = createMockDeps({ desktopClient, openProtocolNewTask: undefined });
+      const orch = new DownloadOrchestrator(apiDeps);
+
+      await orch.handleCreated(
+        createMockDownloadItem({
+          requestHeaderDiagnostics: {
+            enabled: true,
+            matched: false,
+            reason: 'expired',
+          },
+        }),
+      );
+
+      const routedCall = (apiDeps.diagnosticLog.append as ReturnType<typeof vi.fn>).mock.calls.find(
+        (c: unknown[]) => (c[0] as { code: string }).code === 'download_routed',
+      );
+
+      expect(routedCall).toBeDefined();
+      expect((routedCall![0] as { context: Record<string, unknown> }).context).toEqual(
+        expect.objectContaining({
+          requestHeadersEnabled: true,
+          matchedHeaderContext: false,
+          headerMatchReason: 'expired',
+          hasUserAgent: false,
+          headerCount: 0,
+        }),
+      );
+    });
+
+    it('logs deep-link header forwarding as intentionally skipped', async () => {
+      const apiDeps = createMockDeps();
+      const orch = new DownloadOrchestrator(apiDeps);
+
+      await orch.handleCreated(
+        createMockDownloadItem({
+          requestHeaderContext: {
+            url: 'https://example.com/file.zip',
+            createdAt: 1000,
+            userAgent: 'SensitiveBrowser/1.0',
+            requestHeaders: [{ name: 'Origin', value: 'https://private.example.com' }],
+          },
+          requestHeaderDiagnostics: {
+            enabled: true,
+            matched: true,
+            reason: 'matched',
+            source: 'finalUrl',
+            ageMs: 25,
+          },
+        }),
+      );
+
+      const routedCall = (apiDeps.diagnosticLog.append as ReturnType<typeof vi.fn>).mock.calls.find(
+        (c: unknown[]) => (c[0] as { code: string }).code === 'download_routed',
+      );
+
+      expect(routedCall).toBeDefined();
+      expect((routedCall![0] as { context: Record<string, unknown> }).context).toEqual(
+        expect.objectContaining({
+          requestHeadersEnabled: true,
+          matchedHeaderContext: true,
+          headerMatchReason: 'matched',
+          headerMatchSource: 'finalUrl',
+          headerAgeMs: 25,
+          hasUserAgent: false,
+          headerCount: 0,
+          headerForwardingSkippedReason: 'deep-link',
         }),
       );
       expect(JSON.stringify(routedCall![0])).not.toContain('SensitiveBrowser');
@@ -654,7 +739,7 @@ describe('DownloadOrchestrator', () => {
     });
 
     it('does not forward generic download placeholder as HTTP API filename', async () => {
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
       const addDownload = vi
         .spyOn(desktopClient, 'addDownload')
         .mockResolvedValue({ action: 'queued' });
@@ -679,7 +764,7 @@ describe('DownloadOrchestrator', () => {
     });
 
     it('does not forward numeric download-item placeholder as HTTP API filename', async () => {
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
       const addDownload = vi
         .spyOn(desktopClient, 'addDownload')
         .mockResolvedValue({ action: 'queued' });
@@ -704,7 +789,7 @@ describe('DownloadOrchestrator', () => {
     });
 
     it('forwards filename metadata captured after browser filename determination', async () => {
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
       const addDownload = vi
         .spyOn(desktopClient, 'addDownload')
         .mockResolvedValue({ action: 'queued' });
@@ -739,7 +824,7 @@ describe('DownloadOrchestrator', () => {
     });
 
     it('forwards meaningful unicode filename as HTTP API filename', async () => {
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
       const addDownload = vi
         .spyOn(desktopClient, 'addDownload')
         .mockResolvedValue({ action: 'queued' });
@@ -765,7 +850,7 @@ describe('DownloadOrchestrator', () => {
     });
 
     it('decodes RFC 2047 encoded-word filename before forwarding to HTTP API', async () => {
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
       const addDownload = vi
         .spyOn(desktopClient, 'addDownload')
         .mockResolvedValue({ action: 'queued' });
@@ -791,7 +876,7 @@ describe('DownloadOrchestrator', () => {
     });
 
     it('includes hasCookie: true in diagnostic context when cookies are collected', async () => {
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'secret' });
       vi.spyOn(desktopClient, 'addDownload').mockResolvedValue({ action: 'queued' });
       const cookieDeps = createMockDeps({
         desktopClient,
@@ -871,7 +956,7 @@ describe('DownloadOrchestrator', () => {
     });
 
     it('does not fall back to deep-link when HTTP API authentication fails', async () => {
-      const desktopClient = new DesktopApiClient({ port: 16801, secret: 'wrong-secret' });
+      const desktopClient = new DesktopApiClient({ port: 24110, secret: 'wrong-secret' });
       vi.spyOn(desktopClient, 'addDownload').mockRejectedValue(new ApiAuthError());
       const authDeps = createMockDeps({
         desktopClient,

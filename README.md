@@ -100,7 +100,7 @@ Then load the unpacked extension:
 
 <br>
 
-Yes. This extension sends downloads to the Motrix Next desktop app via its HTTP API on `127.0.0.1:16801`. Without the desktop app running, the extension will show a "Disconnected" status and cannot process downloads.
+Yes. This extension sends downloads to the Motrix Next desktop app via its HTTP API on `127.0.0.1:24110`. Without the desktop app running, the extension will show a "Disconnected" status and cannot process downloads.
 
 </details>
 

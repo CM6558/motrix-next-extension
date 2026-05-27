@@ -13,6 +13,7 @@ import { computed } from 'vue';
 import { NFormItem, NInput, NInputNumber, NButton, NTag, NIcon } from 'naive-ui';
 import { CheckmarkCircleOutline, CloseCircleOutline } from '@vicons/ionicons5';
 import { ConnectionStatus } from '@/lib/services';
+import { DEFAULT_CONNECTION_CONFIG } from '@/shared/constants';
 
 const props = defineProps<{
   port: number;
@@ -59,7 +60,9 @@ const errorMessage = computed(() => {
           :min="1024"
           :max="65535"
           style="width: 140px"
-          @update:value="(v: number | null) => emit('update:port', v ?? 16801)"
+          @update:value="
+            (v: number | null) => emit('update:port', v ?? DEFAULT_CONNECTION_CONFIG.port)
+          "
         />
       </NFormItem>
       <NFormItem :label="i18n('options_api_secret_label', 'API Secret')">

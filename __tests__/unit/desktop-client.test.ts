@@ -44,7 +44,7 @@ async function readJsonBody(request: Request): Promise<unknown> {
 
 describe('DesktopApiClient', () => {
   const defaultConfig: DesktopApiConfig = {
-    port: 16801,
+    port: 24110,
     secret: 'test-secret',
   };
 
@@ -59,7 +59,7 @@ describe('DesktopApiClient', () => {
   // ── Configuration ──────────────────────────────────────────
 
   it('constructs base URL from port', () => {
-    expect(client.baseUrl).toBe('http://127.0.0.1:16801');
+    expect(client.baseUrl).toBe('http://127.0.0.1:24110');
   });
 
   it('uses custom port in base URL', () => {
@@ -92,7 +92,7 @@ describe('DesktopApiClient', () => {
 
       await client.ping();
       const request = firstRequest();
-      expect(request.url).toBe('http://127.0.0.1:16801/ping');
+      expect(request.url).toBe('http://127.0.0.1:24110/ping');
       expect(request.method).toBe('GET');
       expect(request.headers.get('authorization')).toBeNull();
     });
@@ -164,7 +164,7 @@ describe('DesktopApiClient', () => {
 
       await client.addDownload(request);
       const sent = firstRequest();
-      expect(sent.url).toBe('http://127.0.0.1:16801/add');
+      expect(sent.url).toBe('http://127.0.0.1:24110/add');
       expect(sent.method).toBe('POST');
       expect(sent.headers.get('content-type')).toBe('application/json');
       expect(sent.headers.get('authorization')).toBe('Bearer test-secret');
@@ -172,7 +172,7 @@ describe('DesktopApiClient', () => {
     });
 
     it('omits Authorization header when secret is empty', async () => {
-      const noAuthClient = new DesktopApiClient({ port: 16801, secret: '' });
+      const noAuthClient = new DesktopApiClient({ port: 24110, secret: '' });
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
         new Response(JSON.stringify({ action: 'queued' }), { status: 200 }),
       );
@@ -267,13 +267,13 @@ describe('DesktopApiClient', () => {
 
       await client.getStat();
       const request = firstRequest();
-      expect(request.url).toBe('http://127.0.0.1:16801/stat');
+      expect(request.url).toBe('http://127.0.0.1:24110/stat');
       expect(request.method).toBe('GET');
       expect(request.headers.get('authorization')).toBe('Bearer test-secret');
     });
 
     it('omits Authorization when secret is empty', async () => {
-      const noAuthClient = new DesktopApiClient({ port: 16801, secret: '' });
+      const noAuthClient = new DesktopApiClient({ port: 24110, secret: '' });
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -329,7 +329,7 @@ describe('DesktopApiClient', () => {
       expect(result.status).toBe('ok');
 
       const request = firstRequest();
-      expect(request.url).toBe('http://127.0.0.1:16801/pause-all');
+      expect(request.url).toBe('http://127.0.0.1:24110/pause-all');
       expect(request.method).toBe('POST');
       expect(request.headers.get('authorization')).toBe('Bearer test-secret');
     });
@@ -364,7 +364,7 @@ describe('DesktopApiClient', () => {
       expect(result.status).toBe('ok');
 
       const request = firstRequest();
-      expect(request.url).toBe('http://127.0.0.1:16801/resume-all');
+      expect(request.url).toBe('http://127.0.0.1:24110/resume-all');
       expect(request.method).toBe('POST');
       expect(request.headers.get('authorization')).toBe('Bearer test-secret');
     });

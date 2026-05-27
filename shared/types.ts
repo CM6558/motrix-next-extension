@@ -127,6 +127,9 @@ export type DiagnosticCode =
   | 'download_routed'
   | 'download_cancel_failed'
   | 'download_handler_error'
+  | 'request_headers_listener_ready'
+  | 'request_headers_listener_downgraded'
+  | 'request_headers_listener_failed'
   // ── Wake lifecycle ────────────────────────────────────
   | 'download_wake_attempt'
   | 'wake_success'

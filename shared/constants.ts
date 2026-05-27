@@ -1,7 +1,7 @@
 import type { DownloadSettings, ConnectionConfig, UiPrefs } from './types';
 
 export const DEFAULT_CONNECTION_CONFIG: Readonly<ConnectionConfig> = {
-  port: 16801,
+  port: 24110,
   secret: '',
 } as const;
 

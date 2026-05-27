@@ -28,7 +28,7 @@ import {
   parseUiPrefs,
 } from '@/lib/storage';
 import { buildProtocolUrl, ProtocolAction } from '@/lib/protocol';
-import { DEFAULT_DOWNLOAD_SETTINGS } from '@/shared/constants';
+import { DEFAULT_CONNECTION_CONFIG, DEFAULT_DOWNLOAD_SETTINGS } from '@/shared/constants';
 import type { DownloadSettings, SiteRule, DiagnosticCode, InterceptionScope } from '@/shared/types';
 import type { DiagnosticInput } from '@/lib/storage/diagnostic-log';
 import { I18nEngine } from '@/shared/i18n/engine';
@@ -114,7 +114,10 @@ export default defineBackground(() => {
   }
 
   // ─── Desktop API client ───────────────────────
-  const desktopClient = new DesktopApiClient({ port: 16801, secret: '' });
+  const desktopClient = new DesktopApiClient({
+    port: DEFAULT_CONNECTION_CONFIG.port,
+    secret: DEFAULT_CONNECTION_CONFIG.secret,
+  });
   const wakeService = new WakeService();
 
   // ─── Load config from storage on startup ──────────
@@ -340,8 +343,11 @@ export default defineBackground(() => {
       ? 'firefox'
       : 'chromium';
 
-    const addListener = (extraInfoSpec: string[]) => {
-      browserWithWebRequest.webRequest?.onBeforeSendHeaders?.addListener(
+    const addListener = (extraInfoSpec: string[]): boolean => {
+      const listener = browserWithWebRequest.webRequest?.onBeforeSendHeaders;
+      if (!listener) return false;
+
+      listener.addListener(
         (details): undefined => {
           if (!settings.forwardRequestHeaders) return undefined;
           const context = captureRequestHeaderContext({
@@ -356,31 +362,71 @@ export default defineBackground(() => {
         { urls: ['http://*/*', 'https://*/*'] },
         extraInfoSpec,
       );
+      return true;
     };
 
     const extraInfoSpec = buildRequestHeaderExtraInfoSpec(requestHeaderBrowser);
     try {
-      addListener(extraInfoSpec);
+      if (!addListener(extraInfoSpec)) {
+        logWarn('request_headers_listener_failed', 'Request header context listener unavailable', {
+          browser: requestHeaderBrowser,
+          stage: 'request-headers',
+          reason: 'missing-webRequest-listener',
+        });
+        return;
+      }
+      logInfo('request_headers_listener_ready', 'Request header context listener registered', {
+        browser: requestHeaderBrowser,
+        stage: 'request-headers',
+        extraHeaders: extraInfoSpec.includes('extraHeaders'),
+      });
     } catch (e) {
       if (!import.meta.env.FIREFOX && extraInfoSpec.includes('extraHeaders')) {
         try {
-          addListener(['requestHeaders']);
-          logWarn('download_fallback', 'Request header context listener downgraded', {
-            stage: 'request-headers',
-          });
+          if (!addListener(['requestHeaders'])) {
+            logWarn(
+              'request_headers_listener_failed',
+              'Request header context listener unavailable',
+              {
+                browser: requestHeaderBrowser,
+                stage: 'request-headers',
+                reason: 'missing-webRequest-listener',
+              },
+            );
+            return;
+          }
+          logWarn(
+            'request_headers_listener_downgraded',
+            'Request header context listener downgraded',
+            {
+              browser: requestHeaderBrowser,
+              stage: 'request-headers',
+              extraHeaders: false,
+            },
+          );
           return;
         } catch (fallbackError) {
           logWarn(
-            'download_fallback',
+            'request_headers_listener_failed',
             `Request header context listener unavailable: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`,
+            {
+              browser: requestHeaderBrowser,
+              stage: 'request-headers',
+              reason: 'fallback-registration-failed',
+            },
           );
           return;
         }
       }
 
       logWarn(
-        'download_fallback',
+        'request_headers_listener_failed',
         `Request header context listener unavailable: ${e instanceof Error ? e.message : String(e)}`,
+        {
+          browser: requestHeaderBrowser,
+          stage: 'request-headers',
+          reason: 'registration-failed',
+        },
       );
     }
   }
@@ -434,6 +480,18 @@ export default defineBackground(() => {
     void (async () => {
       try {
         await ensureConfigLoaded();
+        const headerMatch = settings.forwardRequestHeaders
+          ? requestHeaderContexts.match({
+              url: item.url,
+              finalUrl: item.finalUrl ?? item.url,
+            })
+          : {
+              matched: false,
+              reason: 'disabled' as const,
+              context: undefined,
+              source: undefined,
+              ageMs: undefined,
+            };
         await orchestrator.handleCreated({
           id: item.id,
           url: item.url,
@@ -447,12 +505,14 @@ export default defineBackground(() => {
             | undefined,
           state: item.state ?? 'in_progress',
           referrer: item.referrer ?? '',
-          requestHeaderContext: settings.forwardRequestHeaders
-            ? requestHeaderContexts.match({
-                url: item.url,
-                finalUrl: item.finalUrl ?? item.url,
-              })
-            : undefined,
+          requestHeaderContext: headerMatch.context,
+          requestHeaderDiagnostics: {
+            enabled: settings.forwardRequestHeaders,
+            matched: headerMatch.matched,
+            reason: headerMatch.reason,
+            ...(headerMatch.source ? { source: headerMatch.source } : {}),
+            ...(headerMatch.ageMs !== undefined ? { ageMs: headerMatch.ageMs } : {}),
+          },
         });
       } catch (e) {
         logError(

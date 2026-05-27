@@ -101,19 +101,37 @@ describe('request header context', () => {
       finalUrl: 'https://cdn.example.com/file.zip',
     });
 
-    expect(matched?.requestHeaders).toEqual([{ name: 'Accept', value: 'final' }]);
-    expect(
-      store.match({
-        url: 'https://origin.example.com/download',
-        finalUrl: 'https://cdn.example.com/file.zip',
+    expect(matched).toEqual(
+      expect.objectContaining({
+        matched: true,
+        reason: 'matched',
+        source: 'finalUrl',
+        ageMs: 0,
       }),
-    ).toEqual(original);
+    );
+    expect(matched.context?.requestHeaders).toEqual([{ name: 'Accept', value: 'final' }]);
+
+    const secondMatch = store.match({
+      url: 'https://origin.example.com/download',
+      finalUrl: 'https://cdn.example.com/file.zip',
+    });
+    expect(secondMatch).toEqual(
+      expect.objectContaining({
+        matched: true,
+        reason: 'matched',
+        source: 'url',
+      }),
+    );
+    expect(secondMatch.context).toEqual(original);
 
     now = 31_001;
-    expect(store.match({ url: 'https://origin.example.com/download' })).toBeUndefined();
+    expect(store.match({ url: 'https://origin.example.com/download' })).toEqual({
+      matched: false,
+      reason: 'not-found',
+    });
   });
 
-  it('expires cached contexts by TTL', () => {
+  it('reports expired cached contexts by TTL without leaking header values', () => {
     let now = 1000;
     const store = new RequestHeaderContextStore(() => now, 100, 16);
     const context = captureRequestHeaderContext({
@@ -126,7 +144,19 @@ describe('request header context', () => {
     store.remember(context!);
     now = 1101;
 
-    expect(store.match({ url: 'https://cdn.example.com/file.zip' })).toBeUndefined();
+    expect(store.match({ url: 'https://cdn.example.com/file.zip' })).toEqual({
+      matched: false,
+      reason: 'expired',
+    });
+  });
+
+  it('reports not-found when no cached context matches', () => {
+    const store = new RequestHeaderContextStore(() => 1000, 30_000, 16);
+
+    expect(store.match({ url: 'https://cdn.example.com/missing.zip' })).toEqual({
+      matched: false,
+      reason: 'not-found',
+    });
   });
 
   it('uses extraHeaders only for Chromium request-header capture', () => {

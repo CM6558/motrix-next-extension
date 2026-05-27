@@ -41,7 +41,7 @@ Observes request and response headers for downloads that are already being inter
 ### `http://127.0.0.1/*` and `http://localhost/*`
 
 ```
-Required to communicate with the Motrix Next HTTP API running on the user's local machine inside the desktop application. This is the ONLY network communication the extension makes. The extension sends requests to http://127.0.0.1:{port} (default port: 16801) to submit download tasks, check connection status, query stats, and control tasks. No requests are ever made to any remote server.
+Required to communicate with the Motrix Next HTTP API running on the user's local machine inside the desktop application. This is the ONLY network communication the extension makes. The extension sends requests to http://127.0.0.1:{port} (default port: 24110) to submit download tasks, check connection status, query stats, and control tasks. No requests are ever made to any remote server.
 ```
 
 ### `cookies`
