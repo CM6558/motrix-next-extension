@@ -374,7 +374,7 @@ describe('DownloadOrchestrator', () => {
     });
   });
 
-  // ─── handleCreated — skip conditions (preserved) ───────
+  // ─── handleCreated — skip conditions ───────────────────
 
   describe('handleCreated — skip conditions', () => {
     it('skips when extension is disabled and returns false', async () => {
@@ -1033,16 +1033,6 @@ describe('DownloadOrchestrator', () => {
           level: 'error',
         }),
       );
-    });
-  });
-
-  // ─── Verify removed behaviors ─────────────────────────
-
-  describe('no legacy aria2 dependency', () => {
-    it('does not have aria2 property in deps interface', () => {
-      // Verify the deps object passed to orchestrator has no aria2 property.
-      // This is a structural test confirming the legacy dependency was removed.
-      expect(deps).not.toHaveProperty('aria2');
     });
   });
 

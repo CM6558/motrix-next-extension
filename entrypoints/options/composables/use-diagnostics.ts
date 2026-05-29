@@ -35,7 +35,7 @@ export function useDiagnostics(storageService: StorageService, runtime: Diagnost
    * (except API secret), and the full diagnostic event log.
    */
   async function exportDiagnosticReport(): Promise<void> {
-    const { storage: data } = await storageService.load();
+    const data = await storageService.load();
 
     const manifest = runtime.getManifest?.() ?? {};
 

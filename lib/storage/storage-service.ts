@@ -12,7 +12,6 @@
  * chrome.storage.local import.
  */
 import { parseStorage, type ParsedStorage } from './schema';
-import { migrateStorage, type MigrationStorageApi, type MigrationResult } from './migration';
 import type {
   ConnectionConfig,
   DownloadSettings,
@@ -28,29 +27,18 @@ export interface StorageApi {
   set: (items: Record<string, unknown>) => Promise<void>;
 }
 
-/** Result of a load() call — includes both parsed data and migration info. */
-export interface LoadResult {
-  readonly storage: ParsedStorage;
-  readonly migration: MigrationResult;
-}
-
 // ─── Service ────────────────────────────────────────────
 
 export class StorageService {
   constructor(private readonly api: StorageApi) {}
 
   /**
-   * Load the entire storage snapshot, running migrations and schema
-   * validation. Returns fully typed, defaulted storage alongside
-   * migration metadata for diagnostic logging.
+   * Load the entire storage snapshot with schema validation.
+   * Missing or corrupt fields are repaired by parseStorage defaults.
    */
-  async load(): Promise<LoadResult> {
-    // Run migrations first (stamps _version if needed).
-    const migration = await migrateStorage(this.api as MigrationStorageApi);
-
-    // Read and validate.
+  async load(): Promise<ParsedStorage> {
     const raw = await this.api.get(null);
-    return { storage: parseStorage(raw), migration };
+    return parseStorage(raw);
   }
 
   /** Persist API connection configuration. */
@@ -60,7 +48,7 @@ export class StorageService {
 
   /** Patch API connection configuration without overwriting unrelated fields. */
   async updateConnectionConfig(patch: Partial<ConnectionConfig>): Promise<void> {
-    const { storage } = await this.load();
+    const storage = await this.load();
     await this.saveConnectionConfig({ ...storage.connection, ...patch });
   }
 
@@ -71,7 +59,7 @@ export class StorageService {
 
   /** Patch download behavior settings without overwriting unrelated fields. */
   async updateSettings(patch: Partial<DownloadSettings>): Promise<void> {
-    const { storage } = await this.load();
+    const storage = await this.load();
     await this.saveSettings({ ...storage.settings, ...patch });
   }
 
@@ -87,7 +75,7 @@ export class StorageService {
 
   /** Patch UI preferences without overwriting unrelated fields. */
   async updateUiPrefs(patch: Partial<UiPrefs>): Promise<void> {
-    const { storage } = await this.load();
+    const storage = await this.load();
     await this.saveUiPrefs({ ...storage.uiPrefs, ...patch });
   }
 

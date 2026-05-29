@@ -61,20 +61,32 @@ describe('useDiagnostics', () => {
   it('exportDiagnosticReport() triggers a file download with complete diagnostic data', async () => {
     const storage = mockStorageService();
     (storage.load as ReturnType<typeof vi.fn>).mockResolvedValue({
-      storage: {
-        connection: { port: 29110, secret: 'my-secret' },
-        settings: {
+      connection: { port: 29110, secret: 'my-secret' },
+      settings: {
+        enabled: true,
+        hideDownloadBar: false,
+        autoLaunchApp: true,
+        forwardRequestHeaders: true,
+        forwardCookies: false,
+        duplicateGuard: {
           enabled: true,
-          hideDownloadBar: false,
-          autoLaunchApp: true,
-          forwardCookies: false,
+          windowSeconds: 10,
         },
-        siteRules: [{ id: 'r1', pattern: '*.github.com', action: 'always-intercept' }],
-        uiPrefs: { theme: 'system', colorScheme: 'amber', locale: 'auto' },
-        diagnosticLog: [createEvent({ id: 'e1' })],
-        _version: 2,
+        minimumFileSize: {
+          enabled: true,
+          sizeMb: 5,
+          unknownSizeAction: 'intercept',
+        },
+        interceptionScope: {
+          browserDownloads: true,
+          magnet: true,
+          ed2k: true,
+          thunder: true,
+        },
       },
-      migration: { from: 2, to: 2, migrated: false },
+      siteRules: [{ id: 'r1', pattern: '*.github.com', action: 'always-intercept' }],
+      uiPrefs: { theme: 'system', colorScheme: 'amber', locale: 'auto' },
+      diagnosticLog: [createEvent({ id: 'e1' })],
     });
 
     // Mock browser APIs — capture the data URI set on the anchor element.

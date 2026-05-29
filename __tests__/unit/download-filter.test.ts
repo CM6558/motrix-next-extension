@@ -141,8 +141,6 @@ describe('InterceptionScopeStage', () => {
 // ─── Site Rule Stage ────────────────────────────────────
 
 describe('SiteRuleStage', () => {
-  // ── Existing behavior (must remain green) ──
-
   it('returns null when no rules match', () => {
     const rules: SiteRule[] = [{ id: '1', pattern: 'other.com', action: 'always-skip' }];
     const stage = new SiteRuleStage(() => rules);
@@ -189,14 +187,6 @@ describe('SiteRuleStage', () => {
     const ctx = createContext({ tabUrl: 'https://example.com/page' });
     const result = stage.evaluate(ctx, DEFAULT_SETTINGS);
     expect(result).toBeNull();
-  });
-
-  it('implements FilterStage interface', () => {
-    const stage = new SiteRuleStage(() => []);
-    // Should conform to FilterStage — has name and evaluate(ctx, config)
-    expect(stage.name).toBe('site-rule');
-    expect(typeof stage.evaluate).toBe('function');
-    expect(stage.evaluate.length).toBe(2); // Only 2 params now
   });
 
   // ── Glob patterns via picomatch ──
@@ -352,11 +342,6 @@ describe('MimeTypeStage', () => {
   it('handles case-insensitive MIME types', () => {
     const ctx = createContext({ mimeType: 'Text/HTML' });
     expect(stage.evaluate(ctx, DEFAULT_SETTINGS)).toBe('skip');
-  });
-
-  it('implements FilterStage interface', () => {
-    expect(stage.name).toBe('mime-type');
-    expect(typeof stage.evaluate).toBe('function');
   });
 });
 

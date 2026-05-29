@@ -4,7 +4,6 @@ import {
   parseDownloadSettings,
   parseSiteRules,
   parseUiPrefs,
-  parseDiagnosticEvents,
   parseStorage,
 } from '@/lib/storage/schema';
 
@@ -288,120 +287,6 @@ describe('parseUiPrefs', () => {
   });
 });
 
-// ─── DiagnosticEvents Schema ────────────────────────────
-
-describe('parseDiagnosticEvents', () => {
-  it('returns valid events unchanged', () => {
-    const input = [
-      {
-        id: 'evt-1',
-        ts: 1700000000000,
-        level: 'info' as const,
-        code: 'download_routed' as const,
-        message: 'Test message',
-      },
-    ];
-    const result = parseDiagnosticEvents(input);
-    expect(result).toEqual(input);
-  });
-
-  it('returns empty array for undefined input', () => {
-    const result = parseDiagnosticEvents(undefined);
-    expect(result).toEqual([]);
-  });
-
-  it('returns empty array for non-array input', () => {
-    const result = parseDiagnosticEvents(42);
-    expect(result).toEqual([]);
-  });
-
-  it('preserves optional context field', () => {
-    const input = [
-      {
-        id: 'evt-1',
-        ts: 1700000000000,
-        level: 'error' as const,
-        code: 'download_failed' as const,
-        message: 'Failed',
-        context: { url: 'https://example.com', retries: 3 },
-      },
-    ];
-    const result = parseDiagnosticEvents(input);
-    expect(result[0]!.context).toEqual({ url: 'https://example.com', retries: 3 });
-  });
-
-  it('filters out events with invalid level', () => {
-    const input = [
-      { id: 'e1', ts: 1, level: 'info', code: 'download_routed', message: 'ok' },
-      { id: 'e2', ts: 2, level: 'CRITICAL', code: 'download_routed', message: 'bad level' },
-    ];
-    const result = parseDiagnosticEvents(input);
-    expect(result).toHaveLength(1);
-  });
-
-  it('filters out events with unknown diagnostic code', () => {
-    const input = [
-      { id: 'e1', ts: 1, level: 'info', code: 'download_routed', message: 'ok' },
-      { id: 'e2', ts: 2, level: 'info', code: 'totally_made_up', message: 'bad code' },
-    ];
-    const result = parseDiagnosticEvents(input);
-    expect(result).toHaveLength(1);
-    expect(result[0]!.code).toBe('download_routed');
-  });
-
-  it.each([
-    // API connectivity
-    'api_connected',
-    'api_unreachable',
-    'api_auth_failed',
-    // Download interception lifecycle
-    'download_intercepted',
-    'download_skipped',
-    'download_fallback',
-    'download_failed',
-    'download_routed',
-    'download_duplicate_blocked',
-    'download_cancel_failed',
-    'download_handler_error',
-    'request_headers_listener_ready',
-    'request_headers_listener_downgraded',
-    'request_headers_listener_failed',
-    // Wake lifecycle
-    'download_wake_attempt',
-    'wake_success',
-    'wake_timeout',
-    // Cookie & permission
-    'cookie_collect_failed',
-    'permission_granted',
-    'permission_revoked',
-    // Extension lifecycle
-    'extension_started',
-    'extension_installed',
-    'extension_updated',
-    // Configuration
-    'config_loaded',
-    'config_load_failed',
-    'config_changed',
-    // User-initiated actions
-    'context_menu_triggered',
-    'magnet_intercepted',
-    'protocol_intercepted',
-    // Infrastructure
-    'storage_persist_failed',
-    'storage_migrated',
-    'download_bar_error',
-    'tab_query_failed',
-    // Notification
-    'notification_create_failed',
-    'download_route_failed',
-  ] as const)('accepts diagnostic code: %s', (code) => {
-    const input = [{ id: 'e1', ts: 1, level: 'info', code, message: 'test' }];
-    const result = parseDiagnosticEvents(input);
-    expect(result).toHaveLength(1);
-    expect(result[0]!.code).toBe(code);
-  });
-});
-
 // ─── Full Storage Schema ────────────────────────────────
 
 describe('parseStorage', () => {
@@ -533,15 +418,5 @@ describe('parseStorage', () => {
     expect(result.siteRules).toEqual([]);
     expect(result.uiPrefs.theme).toBe('system');
     expect(result.diagnosticLog).toEqual([]);
-  });
-
-  it('preserves _version field', () => {
-    const result = parseStorage({ _version: 1 });
-    expect(result._version).toBe(1);
-  });
-
-  it('defaults _version to 0 when missing', () => {
-    const result = parseStorage({});
-    expect(result._version).toBe(0);
   });
 });

@@ -37,9 +37,6 @@ export const COLOR_SCHEMES: ColorSchemeDefinition[] = [
   { id: 'sakura', labelKey: 'options_color_scheme_sakura', seed: '#EC4899' },
 ];
 
-/** Default color scheme ID. */
-export const DEFAULT_COLOR_SCHEME = 'amber';
-
 /** Resolve a scheme definition by ID, falling back to amber. */
 export function resolveScheme(id: string | undefined): ColorSchemeDefinition {
   return COLOR_SCHEMES.find((s) => s.id === id) ?? COLOR_SCHEMES[0]!;

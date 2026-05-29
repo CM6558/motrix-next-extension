@@ -1,6 +1,6 @@
 import type { Browser } from 'wxt/browser';
 
-export type RuntimePermissionSet = Browser.permissions.Permissions;
+type RuntimePermissionSet = Browser.permissions.Permissions;
 
 export interface PermissionsApi {
   contains: (permissions: RuntimePermissionSet) => Promise<boolean>;

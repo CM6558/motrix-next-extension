@@ -125,7 +125,7 @@ export default defineBackground(() => {
   // ─── Load config from storage on startup ──────────
   async function loadConfig(): Promise<void> {
     try {
-      const { storage: data, migration } = await storageService.load();
+      const data = await storageService.load();
       settings = data.settings;
       siteRules = data.siteRules;
       diagnosticLog.hydrate(data.diagnosticLog);
@@ -142,14 +142,6 @@ export default defineBackground(() => {
           ? resolveLocaleId(browser.i18n.getUILanguage())
           : data.uiPrefs.locale;
       bgI18n.setLocale(effectiveLocale);
-
-      // Log migration result when a migration actually ran
-      if (migration.migrated) {
-        logInfo('storage_migrated', `Storage migrated: v${migration.from} → v${migration.to}`, {
-          from: migration.from,
-          to: migration.to,
-        });
-      }
 
       logInfo('config_loaded', 'Configuration loaded from storage', {
         port: data.connection.port,

@@ -10,11 +10,6 @@ export interface ExternalProtocolClickHandlerDeps {
   sendProtocol: (link: ExternalProtocolLink) => void;
 }
 
-export interface MagnetClickHandlerDeps {
-  isEnabled: () => boolean;
-  sendMagnet: (url: string) => void;
-}
-
 const EXTERNAL_PROTOCOLS: readonly ExternalProtocol[] = ['magnet', 'ed2k', 'thunder'];
 
 function getExternalProtocolLink(target: EventTarget | null): ExternalProtocolLink | null {
@@ -38,20 +33,8 @@ export function createExternalProtocolClickHandler(deps: ExternalProtocolClickHa
   };
 }
 
-export function createMagnetClickHandler(deps: MagnetClickHandlerDeps) {
-  return createExternalProtocolClickHandler({
-    shouldIntercept: (link) => link.protocol === 'magnet' && deps.isEnabled(),
-    sendProtocol: (link) => deps.sendMagnet(link.url),
-  });
-}
-
 export function isExternalProtocol(value: string): value is ExternalProtocol {
   return (EXTERNAL_PROTOCOLS as readonly string[]).includes(value);
-}
-
-export function protocolFromUrl(url: string): ExternalProtocol | null {
-  const protocol = EXTERNAL_PROTOCOLS.find((candidate) => url.startsWith(`${candidate}:`));
-  return protocol ?? null;
 }
 
 export function isCookieCollectableUrl(url: string): boolean {

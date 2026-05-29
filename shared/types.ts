@@ -1,46 +1,3 @@
-// ─── Download Engine Types (used by download orchestrator) ──
-
-export interface Aria2GlobalStat {
-  downloadSpeed: string;
-  uploadSpeed: string;
-  numActive: string;
-  numWaiting: string;
-  numStopped: string;
-  numStoppedTotal: string;
-}
-
-export interface Aria2Task {
-  gid: string;
-  status: 'active' | 'waiting' | 'paused' | 'error' | 'complete' | 'removed';
-  totalLength: string;
-  completedLength: string;
-  uploadLength: string;
-  downloadSpeed: string;
-  uploadSpeed: string;
-  dir: string;
-  files: Aria2File[];
-  bittorrent?: { info?: { name?: string } };
-  errorCode?: string;
-  errorMessage?: string;
-}
-
-export interface Aria2File {
-  index: string;
-  path: string;
-  length: string;
-  completedLength: string;
-  selected: string;
-  uris: Array<{ status: string; uri: string }>;
-}
-
-export interface Aria2InputOptions {
-  dir?: string;
-  out?: string;
-  header?: string[];
-  referer?: string;
-  'user-agent'?: string;
-}
-
 export interface RequestHeader {
   name: string;
   value: string;
@@ -159,7 +116,6 @@ export type DiagnosticCode =
   | 'protocol_intercepted'
   // ── Infrastructure ────────────────────────────────────
   | 'storage_persist_failed'
-  | 'storage_migrated'
   | 'download_bar_error'
   | 'tab_query_failed'
   // ── Notification ───────────────────────────────────────
@@ -175,13 +131,4 @@ export interface DiagnosticEvent {
   code: DiagnosticCode;
   message: string;
   context?: Record<string, string | number | boolean>;
-}
-
-// ─── Download Metadata Types ────────────────────────────
-
-export interface DownloadMetadata {
-  filename: string;
-  cookies: string | null;
-  referer: string;
-  userAgent?: string;
 }

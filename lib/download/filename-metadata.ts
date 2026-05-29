@@ -47,7 +47,7 @@ export function normalizeFilename(filename: string): string {
     .replace(/[. ]+$/, '');
 }
 
-export function isUsableFilename(filename: string): boolean {
+function isUsableFilename(filename: string): boolean {
   const normalized = normalizeFilename(filename);
   if (!normalized || normalized === '.' || normalized === '..') return false;
   if (GENERIC_FILENAMES.has(normalized.toLowerCase())) return false;

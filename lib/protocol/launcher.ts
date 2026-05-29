@@ -9,11 +9,6 @@ export enum ProtocolAction {
   Tasks = 'tasks',
 }
 
-export interface NewTaskParams {
-  url: string;
-  referer?: string;
-}
-
 // ─── URL Builder (Pure Function) ────────────────────────
 
 /**

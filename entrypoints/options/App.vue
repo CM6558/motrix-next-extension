@@ -278,7 +278,7 @@ let stopStorageListener: (() => void) | null = null;
 // ─── Load from Storage ──────────────────────────────────────────────
 
 async function loadFromStorage(): Promise<void> {
-  const { storage: data } = await storageService.load();
+  const data = await storageService.load();
 
   // Hydrate dirty-tracked form (schema-validated, no casts)
   form.value.port = data.connection.port;

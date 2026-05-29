@@ -1,15 +1,7 @@
 import type { StorageApi } from './storage-service';
 
-const STORAGE_KEYS = [
-  '_version',
-  'connection',
-  'settings',
-  'siteRules',
-  'uiPrefs',
-  'diagnosticLog',
-] as const;
+const STORAGE_KEYS = ['connection', 'settings', 'siteRules', 'uiPrefs', 'diagnosticLog'] as const;
 
-type StorageKey = (typeof STORAGE_KEYS)[number];
 type LocalStorageKey = `local:${string}`;
 
 export interface WxtStorageArea {
@@ -23,7 +15,7 @@ function toLocalKey(key: string): LocalStorageKey {
 
 /**
  * Adapt WXT's key-oriented storage API to the chrome.storage.local shape used
- * by StorageService. The schema and migration layers stay unchanged.
+ * by StorageService.
  */
 export function createWxtStorageApi(storage: WxtStorageArea): StorageApi {
   return {
@@ -49,5 +41,3 @@ export function createWxtStorageApi(storage: WxtStorageArea): StorageApi {
     },
   };
 }
-
-export type { StorageKey };

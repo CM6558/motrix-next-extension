@@ -5,18 +5,12 @@ export type { MenuItem } from './context-menu';
 export { DownloadBarService } from './download-bar';
 export type { DownloadBarInput } from './download-bar';
 export { PermissionService } from './permissions';
-export type { PermissionsApi, RuntimePermissionSet } from './permissions';
-export {
-  createExternalProtocolClickHandler,
-  createMagnetClickHandler,
-  isExternalProtocol,
-  protocolFromUrl,
-} from './magnet-interception';
+export type { PermissionsApi } from './permissions';
+export { createExternalProtocolClickHandler, isExternalProtocol } from './magnet-interception';
 export type {
   ExternalProtocol,
   ExternalProtocolClickHandlerDeps,
   ExternalProtocolLink,
-  MagnetClickHandlerDeps,
 } from './magnet-interception';
 export { NotificationService } from './notification';
 export { resolveThemeClass } from './theme';

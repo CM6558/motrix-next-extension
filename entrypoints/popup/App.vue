@@ -179,7 +179,7 @@ function bindStorageChanges(): void {
 
 onMounted(async () => {
   storageService = new StorageService(createWxtStorageApi(wxtStorage));
-  const { storage: data } = await storageService.load();
+  const data = await storageService.load();
 
   // Hydrate interception toggle state
   enabled.value = data.settings.enabled;

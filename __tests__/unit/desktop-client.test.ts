@@ -1,8 +1,6 @@
 /**
  * @fileoverview Tests for DesktopApiClient — the HTTP client that communicates
  * with the Motrix desktop app's embedded Axum API.
- *
- * TDD RED phase: these tests define the expected public API and behavior.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {

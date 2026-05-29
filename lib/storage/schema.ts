@@ -184,7 +184,6 @@ const DiagnosticCodeSchema = z.enum([
   'protocol_intercepted',
   // Infrastructure
   'storage_persist_failed',
-  'storage_migrated',
   'download_bar_error',
   'tab_query_failed',
   // Notification
@@ -209,7 +208,6 @@ export interface ParsedStorage {
   siteRules: z.infer<typeof SiteRuleSchema>[];
   uiPrefs: z.infer<typeof UiPrefsSchema>;
   diagnosticLog: z.infer<typeof DiagnosticEventSchema>[];
-  _version: number;
 }
 
 // ─── Safe Parse Functions ───────────────────────────────
@@ -272,7 +270,7 @@ export function parseUiPrefs(input: unknown): ParsedStorage['uiPrefs'] {
  * Parse and validate an array of DiagnosticEvent objects.
  * Invalid entries are silently filtered out.
  */
-export function parseDiagnosticEvents(input: unknown): ParsedStorage['diagnosticLog'] {
+function parseDiagnosticEvents(input: unknown): ParsedStorage['diagnosticLog'] {
   if (!Array.isArray(input)) return [];
   return input
     .map((item) => DiagnosticEventSchema.safeParse(item))
@@ -293,6 +291,5 @@ export function parseStorage(input: unknown): ParsedStorage {
     siteRules: parseSiteRules(raw.siteRules),
     uiPrefs: parseUiPrefs(raw.uiPrefs),
     diagnosticLog: parseDiagnosticEvents(raw.diagnosticLog),
-    _version: typeof raw._version === 'number' ? raw._version : 0,
   };
 }

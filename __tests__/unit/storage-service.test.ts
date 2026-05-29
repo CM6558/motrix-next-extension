@@ -28,19 +28,17 @@ describe('StorageService.load', () => {
     const api = createMockApi({});
     const service = new StorageService(api);
 
-    const { storage: result, migration } = await service.load();
+    const result = await service.load();
 
     expect(result.connection).toEqual({ port: 29110, secret: '' });
     expect(result.settings.enabled).toBe(true);
     expect(result.siteRules).toEqual([]);
     expect(result.uiPrefs.theme).toBe('system');
     expect(result.diagnosticLog).toEqual([]);
-    expect(migration.migrated).toBe(true);
   });
 
   it('returns schema-validated data for valid storage', async () => {
     const api = createMockApi({
-      _version: 1,
       connection: { port: 9000, secret: 'test' },
       settings: {
         enabled: false,
@@ -50,15 +48,12 @@ describe('StorageService.load', () => {
     });
     const service = new StorageService(api);
 
-    const { storage: result, migration } = await service.load();
+    const result = await service.load();
 
     expect(result.connection.port).toBe(9000);
     expect(result.connection.secret).toBe('test');
     expect(result.settings.enabled).toBe(false);
     expect(result.settings.hideDownloadBar).toBe(true);
-    expect(migration.from).toBe(1);
-    expect(migration.to).toBe(2);
-    expect(migration.migrated).toBe(true);
   });
 
   it('returns defaults for corrupt storage without throwing', async () => {
@@ -68,7 +63,7 @@ describe('StorageService.load', () => {
     });
     const service = new StorageService(api);
 
-    const { storage: result } = await service.load();
+    const result = await service.load();
 
     // Should return defaults, not throw
     expect(result.connection.port).toBe(29110);
@@ -96,7 +91,6 @@ describe('StorageService.saveConnectionConfig', () => {
 describe('StorageService.updateConnectionConfig', () => {
   it('patches connection config while preserving existing fields', async () => {
     const api = createMockApi({
-      _version: 2,
       connection: { port: 29110, secret: 'token' },
     });
     const service = new StorageService(api);
@@ -150,7 +144,6 @@ describe('StorageService.saveSettings', () => {
 describe('StorageService.updateSettings', () => {
   it('patches download settings while preserving existing fields', async () => {
     const api = createMockApi({
-      _version: 2,
       settings: {
         enabled: true,
         hideDownloadBar: true,
@@ -240,7 +233,6 @@ describe('StorageService.saveUiPrefs', () => {
 describe('StorageService.updateUiPrefs', () => {
   it('patches UI preferences while preserving existing fields', async () => {
     const api = createMockApi({
-      _version: 2,
       uiPrefs: { theme: 'dark', colorScheme: 'space', locale: 'en' },
     });
     const service = new StorageService(api);

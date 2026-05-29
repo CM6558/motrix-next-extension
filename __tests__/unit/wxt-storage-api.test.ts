@@ -14,14 +14,12 @@ function createMockWxtStorage(initial: Record<string, unknown> = {}): WxtStorage
 describe('createWxtStorageApi', () => {
   it('reads a full chrome.storage.local-compatible snapshot from WXT storage', async () => {
     const storage = createMockWxtStorage({
-      _version: 2,
       connection: { port: 18000, secret: 'token' },
       siteRules: [{ id: 'r1', pattern: '*.example.com', action: 'always-intercept' }],
     });
     const api = createWxtStorageApi(storage);
 
     await expect(api.get(null)).resolves.toEqual({
-      _version: 2,
       connection: { port: 18000, secret: 'token' },
       siteRules: [{ id: 'r1', pattern: '*.example.com', action: 'always-intercept' }],
     });
@@ -47,13 +45,12 @@ describe('createWxtStorageApi', () => {
 
     await api.set({
       connection: { port: 19000, secret: '' },
-      _version: 2,
     });
 
     expect(storage.setItem).toHaveBeenCalledWith('local:connection', {
       port: 19000,
       secret: '',
     });
-    expect(storage.setItem).toHaveBeenCalledWith('local:_version', 2);
+    expect(storage.setItem).toHaveBeenCalledTimes(1);
   });
 });
