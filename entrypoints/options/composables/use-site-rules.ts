@@ -5,12 +5,10 @@
  * Rules are immediately persisted on every mutation (no dirty tracking needed).
  * Accepts a StorageService for DI-friendly persistence.
  *
- * NOTE: `toRaw()` is required before passing reactive arrays to
- * `chrome.storage.local.set()`. Chrome's structured clone algorithm
- * serializes Vue Proxy arrays as plain objects with numeric keys
- * (`{"0": {...}}`) instead of proper arrays (`[{...}]`).
+ * StorageService normalizes reactive data before writing to browser storage,
+ * so this composable can keep the mutation flow focused on rule state.
  */
-import { ref, toRaw } from 'vue';
+import { ref } from 'vue';
 import type { StorageService } from '@/lib/storage';
 import type { SiteRule } from '@/shared/types';
 
@@ -22,9 +20,7 @@ export function useSiteRules(storageService: StorageService) {
   }
 
   function persistSiteRules(): void {
-    // toRaw strips Vue's reactive Proxy so chrome.storage sees a real array
-    const plain = toRaw(siteRules.value).map((r) => ({ ...toRaw(r) }));
-    void storageService.saveSiteRules(plain);
+    void storageService.saveSiteRules(siteRules.value);
   }
 
   function addRule(rule: Omit<SiteRule, 'id'>): void {

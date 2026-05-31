@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { ref } from 'vue';
 import { StorageService } from '@/lib/storage/storage-service';
 
 // ─── Mock Storage API ───────────────────────────────────
@@ -136,6 +137,39 @@ describe('StorageService.saveSettings', () => {
     await service.saveSettings(settings);
 
     expect(api.set).toHaveBeenCalledWith({ settings });
+  });
+
+  it('strips Vue proxies before writing settings to extension storage', async () => {
+    const api = createMockApi({});
+    const service = new StorageService(api);
+    const settings = ref({
+      enabled: false,
+      hideDownloadBar: true,
+      autoLaunchApp: false,
+      forwardRequestHeaders: true,
+      forwardCookies: true,
+      duplicateGuard: {
+        enabled: true,
+        windowSeconds: 10,
+      },
+      minimumFileSize: {
+        enabled: true,
+        sizeMb: 5,
+        unknownSizeAction: 'intercept' as const,
+      },
+      interceptionScope: {
+        browserDownloads: true,
+        magnet: true,
+        ed2k: true,
+        thunder: true,
+      },
+    });
+
+    await service.saveSettings(settings.value);
+
+    const payload = api.set.mock.calls[0]?.[0];
+    expect(() => structuredClone(payload)).not.toThrow();
+    expect(payload).toEqual({ settings: settings.value });
   });
 });
 

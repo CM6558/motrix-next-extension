@@ -27,6 +27,20 @@ export interface StorageApi {
   set: (items: Record<string, unknown>) => Promise<void>;
 }
 
+function toStorageValue<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => toStorageValue(item)) as T;
+  }
+
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, toStorageValue(item)]),
+    ) as T;
+  }
+
+  return value;
+}
+
 // ─── Service ────────────────────────────────────────────
 
 export class StorageService {
@@ -43,7 +57,7 @@ export class StorageService {
 
   /** Persist API connection configuration. */
   async saveConnectionConfig(config: ConnectionConfig): Promise<void> {
-    await this.api.set({ connection: config });
+    await this.api.set({ connection: toStorageValue(config) });
   }
 
   /** Patch API connection configuration without overwriting unrelated fields. */
@@ -54,7 +68,7 @@ export class StorageService {
 
   /** Persist download behavior settings. */
   async saveSettings(settings: DownloadSettings): Promise<void> {
-    await this.api.set({ settings });
+    await this.api.set({ settings: toStorageValue(settings) });
   }
 
   /** Patch download behavior settings without overwriting unrelated fields. */
@@ -65,12 +79,12 @@ export class StorageService {
 
   /** Persist site rules array. */
   async saveSiteRules(rules: SiteRule[]): Promise<void> {
-    await this.api.set({ siteRules: rules });
+    await this.api.set({ siteRules: toStorageValue(rules) });
   }
 
   /** Persist UI appearance preferences. */
   async saveUiPrefs(prefs: UiPrefs): Promise<void> {
-    await this.api.set({ uiPrefs: prefs });
+    await this.api.set({ uiPrefs: toStorageValue(prefs) });
   }
 
   /** Patch UI preferences without overwriting unrelated fields. */
@@ -81,6 +95,6 @@ export class StorageService {
 
   /** Persist diagnostic event log. */
   async saveDiagnosticLog(events: DiagnosticEvent[]): Promise<void> {
-    await this.api.set({ diagnosticLog: events });
+    await this.api.set({ diagnosticLog: toStorageValue(events) });
   }
 }
