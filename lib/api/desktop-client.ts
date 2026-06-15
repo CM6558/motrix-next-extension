@@ -114,7 +114,7 @@ export class DesktopApiClient {
 
   /** Current base URL derived from the configured port. */
   get baseUrl(): string {
-    return `http://127.0.0.1:${this.config.port}`;
+    return `http://localhost:${this.config.port}`;
   }
 
   /** Update config at runtime (e.g. when user changes port in settings). */
